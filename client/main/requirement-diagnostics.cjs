@@ -14,12 +14,17 @@ const values=new Set(('todo doing done cancel paused intake clarifying ready del
   'prepare start started complete fail wait deliver tasks approvals conversation-turn conversation-delivery '+
   'dispatch ai-dispatch submit-review trace attachments acceptance-context ai-session approve reject native incomplete '+
   'no-handle summary no-primary unchanged no-entries captured review renderer').split(' '));
+// Model metadata only: model ids, provider ids and display labels, so a send log
+// can answer which catalog row a conversation actually used. These are never
+// prompts, filenames, URLs or credentials; values are sanitized and bounded.
+const texts=new Set(['modelId','quotaProvider','modelLabel']);
+const text=value=>String(value).replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,80);
 function create({directory,enabled=false,maxBytes=5*1024*1024}={}) {
   let file='', size=0, stopped=false;
   function record(event, data={}) {
     if(!enabled || stopped)return;
     try {
-      if(!/^(native\.(send|prepared|capture|terminal|error)|receipt\.(send|result|error)|http\.result|renderer\.task|diagnostics\.startup)$/.test(event))return;
+      if(!/^(native\.(send|prepared|capture|terminal|error|model)|receipt\.(send|result|error)|http\.result|renderer\.task|diagnostics\.startup)$/.test(event))return;
       const row={at:new Date().toISOString(),event,pid:process.pid};
       for(const [key,value] of Object.entries(data)) {
         if(value===undefined || value===null)continue;
@@ -27,6 +32,7 @@ function create({directory,enabled=false,maxBytes=5*1024*1024}={}) {
         else if(flags.has(key) && typeof value==='boolean')row[key]=value;
         else if(counts.has(key) && Number.isFinite(value))row[key]=Math.max(0,Math.trunc(value));
         else if(enums.has(key) && values.has(value))row[key]=value;
+        else if(texts.has(key) && typeof value==='string' && value)row[key]=text(value);
       }
       if(event==='diagnostics.startup') {
         for(const key of ['sourceFingerprint','revision'])if(/^[a-f0-9]{40,64}$/.test(data[key] || ''))row[key]=data[key];

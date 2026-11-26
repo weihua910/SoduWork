@@ -1071,6 +1071,8 @@ function install({ app, ipcMain, BrowserWindow, identityOf, sendIdentityOf, capa
     require('../requirement-diagnostics.cjs').record('native.send', {taskId,conversationId:s.sessionId,
       turnId:rawOptions?.submissionId,hasTaskBinding:!!taskId,selectedMode:rawOptions?.taskExecution?.submissionMode,
       runtimeKey:s.adapterId,modelKey:typeof s.model==='string'?s.model:(s.model?.id || s.model?.name),workspaceKey:s.cwd,
+      ...(s.model && typeof s.model==='object' ? {modelId:String(s.model.id||''),
+        quotaProvider:String(s.model.quotaProvider||''),modelLabel:String(s.model.label||'')} : {}),
       hubKey:currentIdentity?.hub,accountKey:require('../device-auth-request').accountScopeKey(currentIdentity)});
     const followUpTurn = !!(rawOptions && rawOptions.taskExecution && rawOptions.taskExecution.followUp === true);
     if (taskId) {

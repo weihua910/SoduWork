@@ -47,6 +47,22 @@ test('hostile values are discarded and unknown fields cannot become log content'
   assert.doesNotMatch(text,/PRIVATE|SECRET|private-host|Authorization/);
   assert.equal(JSON.parse(text).httpStatus,403);
 });
+test('model selection rows keep ids, provider ids and labels but drop everything else', t => {
+  const log=diagnostics.create({directory:fixture(t),enabled:true});
+  log.record('native.model',{conversationId:'private-chat',modelId:'sodu-prd-large',
+    quotaProvider:'provider-2',modelLabel:'GLM5.3Flash-BFSN',prompt:'PRIVATE PROMPT',key:'SECRET KEY'});
+  log.record('native.send',{modelId:'sodu-prd-large',quotaProvider:'provider-2',modelLabel:'GLM5.3Flash-BFSN',
+    prompt:'PRIVATE PROMPT'});
+  log.record('native.model',{modelId:'x'.repeat(100)});
+  const rows=fs.readFileSync(log.file,'utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(rows[0].modelId,'sodu-prd-large');
+  assert.equal(rows[0].quotaProvider,'provider-2');
+  assert.equal(rows[0].modelLabel,'GLM5.3Flash-BFSN');
+  assert.ok(rows[0].conversationId && rows[0].conversationId !== 'private-chat');
+  assert.equal(rows[1].modelId,'sodu-prd-large'); assert.equal(rows[1].quotaProvider,'provider-2');
+  assert.equal(rows[2].modelId.length,80);
+  assert.doesNotMatch(JSON.stringify(rows),/PRIVATE|SECRET|private-chat|x{81}/);
+});
 test('HTTP projection separates request policy, effective policy, review and delivery outcome', () => {
   const project = require('../core/requirement-diagnostics.js');
   const rows=[];

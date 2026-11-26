@@ -46,7 +46,12 @@ function install({ app, ipcMain, session, identityOf, memories, cloud, publish }
       const handle = await current(event, ref);
       if (cloud.guard(handle)) return await cloud.selectExecution(handle, { modelName: name });
       if (typeof handle.selectModel !== 'function') return { ok: false, reason: '当前会话暂不支持切换模型，请更新客户端后重试' };
-      return await handle.selectModel(name);
+      const result = await handle.selectModel(name);
+      // Selection diagnostics answer which catalog row the send chain resolves to.
+      if (result?.ok) require('../requirement-diagnostics.cjs').record('native.model', {
+        conversationId: handle.sessionId, modelId: String(name || ''),
+        modelLabel: String(result?.selection?.model?.label || '') });
+      return result;
     } catch (error) { return { ok: false, reason: String(error.message || error) }; }
   });
   ipcMain.handle('pi-session-set-thinking', async (event, ref, value) => {
